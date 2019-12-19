@@ -34,11 +34,27 @@ class NetWord (var callBack: CallBack){
         val elementTile = document?.getElementsByClass("truncate")!!.last()
         val elementNext =  document?.getElementById("btnNextChapter")
         val elementPre = document?.getElementById("btnPreChapter")
-        var txt = element?.wholeText()
+        var txt = element?.html()
         var linkNext =elementNext?.attr("href")
         var linkPre = elementPre?.attr("href")
         if(txt!=null) {
-            var content = "${elementTile.ownText()} \n\n${txt?.replace("<br>", "\n\t\t")}"
+            txt = txt.replace("<br>","\n\t\t")
+            var text = ""
+            var check = true
+            for(i in txt.indices){
+                if(txt[i]=='<'){
+                    check = false
+                    continue
+                }
+                if(txt[i]=='>'){
+                    check = true
+                    continue
+                }
+                if(check) text+=txt[i]
+
+            }
+            txt = text
+            var content = "${elementTile.ownText()} \n\n $txt"
 
             var truyen = Truyen(content,"https://wikidich.com$linkPre","https://wikidich.com$linkNext",elementTile.wholeText())
             callBack.setText(truyen)
