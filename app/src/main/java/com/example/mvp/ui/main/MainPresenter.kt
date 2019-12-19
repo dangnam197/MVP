@@ -3,18 +3,23 @@ package com.example.mvp.ui.main
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.androidnetworking.AndroidNetworking
 import com.example.mvp.R
 import com.example.mvp.data.db.AppDatabase
 import com.example.mvp.data.db.model.Book
 import com.example.mvp.data.network.ApiStory
+import com.example.mvp.data.network.NetWord
 import com.example.mvp.data.network.model.LinkChap
 import com.example.mvp.data.network.model.Story
 import com.example.mvp.ui.base.BasePresenter
 import com.example.mvp.util.Constant
+import com.example.truyen.model.ItemTruyen
+import com.example.truyen.model.Truyen
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
+import java.util.logging.Handler
 
 
 class MainPresenter(context: Context) : BasePresenter<MainView>(context) {
@@ -46,15 +51,22 @@ class MainPresenter(context: Context) : BasePresenter<MainView>(context) {
 
     private var mOffset = 0
 
-    private var text: String = ""
+    private var mLink = "";
 
+    private var text: String = ""
+    var link = ""
     var touchLock: Boolean = false
+
+     var checkPlay = false
 
     private val apiStoryCallBackListener = object : ApiStory.CallBack {
         override fun setStory(story: Story) {
             text = story.content
             getView()?.setStory(story)
             getView()?.hideProgress()
+            if(checkPlay){
+                next(0)
+            }
             appDatabase.BookDao().insertBook(
                 Book(
                     story.storyId.toInt(),
@@ -66,9 +78,39 @@ class MainPresenter(context: Context) : BasePresenter<MainView>(context) {
         }
 
         override fun setLinkChap(linkChap: LinkChap) {
+            link = linkChap.nextLink
             mLinkChap = linkChap
             getView()?.setLinkChap(linkChap)
         }
+    }
+    private val netWordCallBack = object :NetWord.CallBack{
+        override fun setText(truyen: Truyen) {
+            val story = Story(content = truyen.content,title = truyen.title)
+            text = story.content
+            link = truyen.linkNext
+            val linkChap = LinkChap(truyen.linkPre,truyen.linkNext)
+            mLinkChap = linkChap
+            getView()?.setLinkChap(linkChap)
+
+            getView()?.setStory(story)
+            getView()?.hideProgress()
+            if(checkPlay){
+                next(0)
+            }
+            appDatabase.BookDao().insertBook(
+                Book(
+                    story.storyId.toInt(),
+                    story.title,
+                    mLink
+                )
+            )
+                .observeOn(AndroidSchedulers.mainThread()).subscribeOn(Schedulers.io()).subscribe()
+        }
+
+        override fun setListItemTruyen(listItemTruyen: ArrayList<ItemTruyen>) {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+
     }
 
     init {
@@ -79,8 +121,16 @@ class MainPresenter(context: Context) : BasePresenter<MainView>(context) {
     }
 
     fun getStory(link: String) {
+        link.let {
+            mLink = it
+        }
+        Log.d("ketqua",link)
         getView()?.showProgress()
-        ApiStory(apiStoryCallBackListener).getStory(link)
+        if(link.contains("tangthuvien")) {
+            ApiStory(apiStoryCallBackListener).getStory(link)
+        }else {
+            NetWord(netWordCallBack).getContent(link)
+        }
     }
 
     fun increaseTextSize() {
@@ -131,7 +181,6 @@ class MainPresenter(context: Context) : BasePresenter<MainView>(context) {
 
         }
     }
-
     fun setAppBarHeight(measuredHeight: Int) {
         appBarHeight = measuredHeight
     }
@@ -147,24 +196,50 @@ class MainPresenter(context: Context) : BasePresenter<MainView>(context) {
     private fun next(start: Int) {
         mOldOffset = start
         mOffset = text.indexOf(arrayOf('.', '?', '\n'), start)
-        if (mOffset != -1) {
+        Log.d("ketqua",mOffset.toString())
+        if (mOffset != -1&&mOffset<text.length) {
             getView()?.setSpanTextScroll(mOldOffset, mOffset)
             speak(text.substring(mOldOffset, mOffset))
+
+        }
+        if(mOffset == -1){
+            Log.d("ketqua","nexxt")
+//            android.os.Handler().postDelayed({
+//                Log.d("ketqua","nexxt1")
+//                nextChap()
+//                Log.d("ketqua","nexxt2")
+//            },1000)
+//            nextChap()
+           // ApiStory(apiStoryCallBackListener).getStory(link)
+         //   getStory(link)
+            if(link.contains("tangthuvien")) {
+                ApiStory(apiStoryCallBackListener).getStory(link)
+            }else {
+                NetWord(netWordCallBack).getContent(link)
+            }
 
         }
 
 
     }
-
+    fun stopTTS(){
+        checkPlay = false
+        textToSpeech.stop()
+    }
     fun speechClick() {
-
-        next(mOffset)
+        if(!checkPlay) {
+            checkPlay=true
+            next(mOffset)
+        }else{
+            checkPlay=false
+            textToSpeech.stop()
+        }
 
     }
 
     private fun speak(text: String) {
 
-        textToSpeech.speak(text, TextToSpeech.QUEUE_ADD, null, "textspeech")
+        textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "textspeech")
         textToSpeech.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onDone(p0: String?) {
                 next(mOffset + 1)
@@ -217,7 +292,9 @@ class MainPresenter(context: Context) : BasePresenter<MainView>(context) {
         if (touchLock) {
             mOldOffset = text.indexOfPrevious(arrayOf('.', '"', '?', '\t'), offset)
             mOffset = text.indexOf(arrayOf('.', '\n', '?', ':'), offset)
+            textToSpeech.stop()
             speak(text.substring(mOldOffset, mOffset))
+            checkPlay = true
             getView()?.setSpanText(mOldOffset, mOffset)
         }
     }

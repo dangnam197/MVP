@@ -9,16 +9,17 @@ import androidx.room.PrimaryKey
 @Entity
 data class Book(
     @PrimaryKey
-    @ColumnInfo(name = "id") var id:Int = 1,
-    @ColumnInfo(name = "name") var name: String? ="nam",
-    @ColumnInfo(name = "link") var link: String? ="nam"
+    @ColumnInfo(name = "id") var id: Int = 1,
+    @ColumnInfo(name = "name") var name: String? = "nam",
+    @ColumnInfo(name = "link") var link: String? = "nam"
 
-): Parcelable {
+) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readInt(),
         parcel.readString(),
         parcel.readString()
     )
+
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeInt(id)
         parcel.writeString(name)

@@ -1,5 +1,6 @@
 package com.example.mvp.ui.main
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Build.VERSION
@@ -11,6 +12,7 @@ import android.widget.TextView
 import com.example.mvp.R
 import com.example.mvp.data.network.model.LinkChap
 import com.example.mvp.data.network.model.Story
+import com.example.mvp.ui.SelectTruyenActivity
 import com.example.mvp.ui.base.BasePresenterActivity
 import com.google.android.material.appbar.AppBarLayout
 import kotlinx.android.synthetic.main.activity_main.*
@@ -59,8 +61,21 @@ class MainActivity : BasePresenterActivity<MainView, MainPresenter>(), MainView 
         setSupportActionBar(toolbar)
         initView()
         initAction()
-        getPresenter()?.getStory("https://m.truyen.tangthuvien.vn/doc-truyen/than-van-tien-vuong/chuong-146")
+        initIntent()
+//        getPresenter()?.getStory("https://m.truyen.tangthuvien.vn/doc-truyen/than-van-tien-vuong/chuong-146")
 
+
+    }
+
+    private fun initIntent() {
+        intent?.let {
+            var link :String? = intent.getStringExtra("LINK")
+            if (link != null) {
+                if(link.isNotEmpty()) {
+                    getPresenter()?.getStory(link)
+                }
+            }
+        }
 
     }
 
@@ -108,6 +123,25 @@ class MainActivity : BasePresenterActivity<MainView, MainPresenter>(), MainView 
 
             }
             R.id.text_to_speech -> getPresenter()?.speechClick()
+
+            R.id.web_select -> {
+                val intent =  Intent(this,SelectTruyenActivity::class.java)
+                intent.putExtra("link",getPresenter()?.link)
+                startActivity(intent)
+                getPresenter()?.stopTTS()
+            }
+            R.id.web_select1 -> {
+                val intent =  Intent(this,SelectTruyenActivity::class.java)
+                intent.putExtra("link","https://m.truyen.tangthuvien.vn/")
+                startActivity(intent)
+                getPresenter()?.stopTTS()
+            }
+            R.id.web_select2 -> {
+                val intent =  Intent(this,SelectTruyenActivity::class.java)
+                intent.putExtra("link","https://wikidich.com")
+                startActivity(intent)
+                getPresenter()?.stopTTS()
+            }
         }
         return super.onOptionsItemSelected(item)
     }
